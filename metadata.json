@@ -1,0 +1,8 @@
+{
+  "name": "Remix 晴空天气",
+  "description": "Material You 风格的桌面天气微件与天气应用，支持搜索并保存全球任意城市以便快速切换，或按需使用实时定位。",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

@@ -1,0 +1,20 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="64dp"
+    android:height="64dp"
+    android:viewportWidth="64"
+    android:viewportHeight="64">
+    <!-- Crescent Moon -->
+    <path
+        android:fillColor="#9FA8DA"
+        android:pathData="M26,11C17.7,11 11,17.7 11,26C11,34.3 17.7,41 26,41C31.8,41 36.8,37.7 39.3,32.8C37.7,33.3 36.1,33.6 34.3,33.6C26.5,33.6 20.1,27.2 20.1,19.4C20.1,16.2 21.1,13.3 22.9,11C23.9,11 24.9,11 26,11Z" />
+    <path
+        android:fillColor="#FFE082"
+        android:pathData="M45,12L46.1,15.4L49.5,16.5L46.1,17.6L45,21L43.9,17.6L40.5,16.5L43.9,15.4Z" />
+    <!-- Soft Night Cloud -->
+    <path
+        android:fillColor="#CFD8DC"
+        android:pathData="M21,52H48C53.5,52 58,47.5 58,42C58,36.8 54,32.5 48.9,32.1C47.2,25.2 41,20 33.5,20C25.2,20 18.4,26.3 17.6,34.4C12.7,35.6 9,40 9,45.3C9,50.8 14.3,52 21,52Z" />
+    <path
+        android:fillColor="#F5F7FA"
+        android:pathData="M21,50H47.5C52.7,50 57,45.7 57,40.5C57,35.6 53.2,31.5 48.4,31.1C46.7,24.7 40.8,20 33.8,20C26,20 19.6,25.9 18.8,33.5C14.3,34.6 11,38.7 11,43.5C11,47.6 14.9,50 21,50Z" />
+</vector>

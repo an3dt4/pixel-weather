@@ -1,0 +1,88 @@
+<resources>
+    <string name="app_name">晴空天气</string>
+
+    <!-- Navigation -->
+    <string name="nav_weather">天气</string>
+    <string name="nav_widgets">桌面微件</string>
+    <string name="nav_cities">城市管理</string>
+
+    <!-- Weather Screen -->
+    <string name="weather_feels_like">体感 %1$s</string>
+    <string name="weather_high_low">最高 %1$s  最低 %2$s</string>
+    <string name="weather_hourly_title">24 小时逐时预报</string>
+    <string name="weather_daily_title">7 日天气趋势</string>
+    <string name="weather_metrics_title">实时气象详情</string>
+    <string name="weather_now">现在</string>
+    <string name="weather_today">今天</string>
+    <string name="weather_refresh_cd">刷新天气数据</string>
+    <string name="weather_switch_city_cd">切换或搜索城市</string>
+    <string name="weather_search_city_cd">搜索城市查看天气</string>
+    <string name="weather_search_bar_hint">搜索城市名称查看天气（支持中英文）…</string>
+    <string name="weather_quick_access_label">常用城市快捷切换</string>
+    <string name="weather_add_city_chip">搜索城市</string>
+    <string name="weather_unit_celsius">°C</string>
+    <string name="weather_unit_fahrenheit">°F</string>
+    <string name="weather_manual_badge">自选城市</string>
+    <string name="weather_gps_badge">实时定位</string>
+    <string name="weather_updated_just_now">刚刚更新 · Open-Meteo 实时气象</string>
+    <string name="weather_offline_cached">离线缓存数据 · 点击刷新</string>
+
+    <!-- Metrics -->
+    <string name="metric_uv_title">紫外线指数</string>
+    <string name="metric_humidity_title">相对湿度</string>
+    <string name="metric_wind_title">风速与风向</string>
+    <string name="metric_pressure_title">海平面气压</string>
+    <string name="metric_visibility_title">能见度</string>
+    <string name="metric_sun_title">日出与日落</string>
+
+    <!-- Widget Studio & Configuration -->
+    <string name="widget_studio_title">Material You 桌面天气微件</string>
+    <string name="widget_studio_subtitle">输入城市名称即可搜索并绑定全球任意地点，自动保存至常用城市列表以便快速切换。</string>
+    <string name="widget_style_section">微件版式（三款经典样式）</string>
+    <string name="widget_style_pill">斜向胶囊 (2×2)</string>
+    <string name="widget_style_square">圆角方卡 (2×2)</string>
+    <string name="widget_style_forecast">多时预报 (4×2)</string>
+    <string name="widget_palette_section">Material You 配色方案</string>
+    <string name="palette_dynamic_sky">莫奈晴空</string>
+    <string name="palette_daylight_blue">晨曦浅蓝</string>
+    <string name="palette_midnight_indigo">深邃夜幕</string>
+    <string name="palette_warm_sun">暖阳奶咖</string>
+    <string name="widget_location_section">搜索与切换微件城市</string>
+    <string name="widget_follow_primary">跟随当前主城市</string>
+    <string name="widget_pin_to_home">一键添加微件到主屏幕</string>
+    <string name="widget_active_instances_title">桌面已放置的微件</string>
+    <string name="widget_reconfigure_btn">搜索/换城</string>
+    <string name="widget_save_apply">保存并应用到桌面微件</string>
+    <string name="widget_cancel">取消</string>
+    <string name="widget_configure_header">选择微件城市与样式</string>
+
+    <!-- Cities & Search -->
+    <string name="cities_title">城市搜索与常用地点</string>
+    <string name="cities_subtitle">输入中英文城市名称搜索全球地点，点击匹配结果即可查看实时天气并自动保存供快速访问。</string>
+    <string name="cities_search_placeholder">输入城市名（如：北京、杭州、Tokyo、London、New York）</string>
+    <string name="cities_matching_results_title">匹配的地点结果</string>
+    <string name="cities_saved_badge">已保存</string>
+    <string name="cities_select_and_save">查看并保存</string>
+    <string name="cities_optional_gps_title">使用当前实时定位（可选）</string>
+    <string name="cities_optional_gps_desc">仅在您主动点击时获取粗略位置，不开启也可搜索并保存任意城市</string>
+    <string name="cities_optional_gps_btn">定位当前城市</string>
+    <string name="cities_popular_title">热门城市一键添加</string>
+    <string name="cities_saved_title">已保存的常用城市（快速访问）</string>
+    <string name="cities_set_primary">查看天气</string>
+    <string name="cities_current_active">正在显示</string>
+    <string name="cities_apply_all_widgets">应用到微件</string>
+    <string name="cities_pin_favorite_cd">置顶常用城市</string>
+
+    <!-- AppWidget Picker Metadata -->
+    <string name="widget_pill_name">晴空 · 胶囊与方卡天气</string>
+    <string name="widget_pill_desc">Material You 斜向胶囊与圆角方卡天气微件，支持搜索并保存全球任意城市</string>
+    <string name="widget_forecast_name">晴空 · 多时天气预报</string>
+    <string name="widget_forecast_desc">Material You 逐时与多日天气预报微件，点击城市即可搜索或快速切换已存地点</string>
+
+    <!-- App Launcher Shortcuts & Home Screen Icon Pinning -->
+    <string name="pin_app_icon_to_home">将「晴空天气」图标固定到主屏幕</string>
+    <string name="shortcut_search_short">搜索城市</string>
+    <string name="shortcut_search_long">搜索全球城市天气</string>
+    <string name="shortcut_widgets_short">桌面微件</string>
+    <string name="shortcut_widgets_long">定制桌面天气微件</string>
+</resources>
