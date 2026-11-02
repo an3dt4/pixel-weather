@@ -140,7 +140,12 @@ class MainActivity : ComponentActivity() {
                 styleKey = pinnedStyle,
                 paletteKey = intent.getStringExtra("pinned_palette"),
                 cityId = intent.getStringExtra("pinned_city_id"),
-                useFahrenheit = intent.getBooleanExtra("pinned_fahrenheit", false)
+                useFahrenheit = intent.getBooleanExtra("pinned_fahrenheit", false),
+                backgroundAlpha = intent.getFloatExtra("pinned_alpha", 0.68f),
+                showBorder = intent.getBooleanExtra("pinned_show_border", false),
+                showDate = intent.getBooleanExtra("pinned_show_date", true),
+                useEnglishDate = intent.getBooleanExtra("pinned_english_date", false),
+                showCityOnWidget = intent.getBooleanExtra("pinned_show_city", true)
             )
         }
     }
@@ -263,6 +268,13 @@ fun SkyPillAppRoot(
                             uiState = uiState,
                             onSelectStyle = viewModel::updateStudioStyle,
                             onSelectPalette = viewModel::updateStudioPalette,
+                            onChangeOpacity = viewModel::updateStudioOpacity,
+                            onSelectOpacityPreset = viewModel::applyStudioOpacityPreset,
+                            onToggleShowBorder = viewModel::updateStudioShowBorder,
+                            onToggleShowDate = viewModel::updateStudioShowDate,
+                            onToggleEnglishDate = viewModel::updateStudioUseEnglishDate,
+                            onToggleShowCityOnWidget = viewModel::updateStudioShowCityOnWidget,
+                            onSyncToActiveWidgets = viewModel::syncDraftToAllActiveWidgets,
                             onSelectStudioCity = viewModel::updateStudioCity,
                             onSearchQueryChange = viewModel::onSearchQueryChange,
                             onClearSearch = viewModel::clearSearch,

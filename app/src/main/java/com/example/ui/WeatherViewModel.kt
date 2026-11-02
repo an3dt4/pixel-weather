@@ -22,9 +22,14 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 data class StudioDraftState(
-    val selectedStyle: WidgetStyle = WidgetStyle.DIAGONAL_PILL,
-    val selectedPalette: WidgetPalette = WidgetPalette.DYNAMIC_SKY,
+    val selectedStyle: WidgetStyle = WidgetStyle.PIXEL_AT_A_GLANCE,
+    val selectedPalette: WidgetPalette = WidgetPalette.LIGHT_PILL,
     val selectedCityId: String = WeatherRepository.FOLLOW_PRIMARY_CITY_ID,
+    val backgroundAlpha: Float = 0.68f,
+    val showBorder: Boolean = false,
+    val showDate: Boolean = true,
+    val useEnglishDate: Boolean = false,
+    val showCityOnWidget: Boolean = true,
     val previewTallForecast: Boolean = false
 )
 
@@ -98,7 +103,12 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
                     it.copy(
                         selectedStyle = WidgetStyle.fromKey(savedTemplate.widgetStyle),
                         selectedPalette = WidgetPalette.fromKey(savedTemplate.colorPalette),
-                        selectedCityId = savedTemplate.cityId
+                        selectedCityId = savedTemplate.cityId,
+                        backgroundAlpha = savedTemplate.backgroundAlpha,
+                        showBorder = savedTemplate.showBorder,
+                        showDate = savedTemplate.showDate,
+                        useEnglishDate = savedTemplate.useEnglishDate,
+                        showCityOnWidget = savedTemplate.showCityOnWidget
                     )
                 }
             }
@@ -231,10 +241,6 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
         searchStateFlow.value = SearchUiState()
     }
 
-    /**
-     * Adds or updates the selected search location in stored quick-access locations,
-     * fetches its real weather, and optionally binds it directly to the Widget Studio & active widgets.
-     */
     fun addCityAndSelect(
         cityResult: CitySearchResult,
         alsoApplyStudioDraft: Boolean = false
@@ -283,7 +289,15 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun updateStudioStyle(style: WidgetStyle) {
-        studioDraftFlow.update { it.copy(selectedStyle = style) }
+        studioDraftFlow.update { current ->
+            when {
+                style == WidgetStyle.PIXEL_MINIMAL && current.backgroundAlpha == 0.68f ->
+                    current.copy(selectedStyle = style, selectedPalette = WidgetPalette.DARK_PILL, backgroundAlpha = 0.0f, showBorder = false)
+                style != WidgetStyle.PIXEL_MINIMAL && current.selectedStyle == WidgetStyle.PIXEL_MINIMAL && current.backgroundAlpha == 0.0f && !current.showBorder ->
+                    current.copy(selectedStyle = style, selectedPalette = WidgetPalette.LIGHT_PILL, backgroundAlpha = 0.68f)
+                else -> current.copy(selectedStyle = style)
+            }
+        }
         persistStudioTemplate()
     }
 
@@ -297,8 +311,72 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
         persistStudioTemplate()
     }
 
+    fun updateStudioOpacity(alpha: Float) {
+        val clamped = alpha.coerceIn(0f, 1f)
+        studioDraftFlow.update {
+            it.copy(
+                backgroundAlpha = clamped,
+                showBorder = if (clamped >= 0.99f) false else it.showBorder
+            )
+        }
+        persistStudioTemplate()
+    }
+
+    fun applyStudioOpacityPreset(alpha: Float, showBorder: Boolean) {
+        studioDraftFlow.update {
+            it.copy(backgroundAlpha = alpha.coerceIn(0f, 1f), showBorder = showBorder)
+        }
+        persistStudioTemplate()
+    }
+
+    fun updateStudioShowBorder(show: Boolean) {
+        studioDraftFlow.update { it.copy(showBorder = show) }
+        persistStudioTemplate()
+    }
+
+    fun updateStudioShowDate(show: Boolean) {
+        studioDraftFlow.update { it.copy(showDate = show) }
+        persistStudioTemplate()
+    }
+
+    fun updateStudioUseEnglishDate(useEnglish: Boolean) {
+        studioDraftFlow.update { it.copy(useEnglishDate = useEnglish) }
+        persistStudioTemplate()
+    }
+
+    fun updateStudioShowCityOnWidget(show: Boolean) {
+        studioDraftFlow.update { it.copy(showCityOnWidget = show) }
+        persistStudioTemplate()
+    }
+
     fun toggleStudioTallForecastPreview() {
         studioDraftFlow.update { it.copy(previewTallForecast = !it.previewTallForecast) }
+    }
+
+    fun syncDraftToAllActiveWidgets() {
+        viewModelScope.launch {
+            val draft = studioDraftFlow.value
+            val useF = uiState.value.useFahrenheit
+            val activeIds = activeWidgetsFlow.value.map { it.appWidgetId }
+            persistStudioTemplateInternal()
+            if (activeIds.isNotEmpty()) {
+                repository.syncStyleAndConfigToWidgetIds(
+                    widgetIds = activeIds,
+                    cityId = draft.selectedCityId,
+                    style = draft.selectedStyle,
+                    palette = draft.selectedPalette,
+                    useFahrenheit = useF,
+                    backgroundAlpha = draft.backgroundAlpha,
+                    showBorder = draft.showBorder,
+                    showDate = draft.showDate,
+                    useEnglishDate = draft.useEnglishDate,
+                    showCityOnWidget = draft.showCityOnWidget
+                )
+            }
+            WeatherWidgetUpdater.updateAllWidgets(appContext)
+            refreshActiveWidgetInstances()
+            snackbarFlow.value = "已将当前 At a Glance 样式与透明度应用到桌面所有微件！"
+        }
     }
 
     private fun persistStudioTemplate() {
@@ -317,7 +395,12 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
             cityId = cityIdOverride ?: draft.selectedCityId,
             style = draft.selectedStyle,
             palette = draft.selectedPalette,
-            useFahrenheit = useF
+            useFahrenheit = useF,
+            backgroundAlpha = draft.backgroundAlpha,
+            showBorder = draft.showBorder,
+            showDate = draft.showDate,
+            useEnglishDate = draft.useEnglishDate,
+            showCityOnWidget = draft.showCityOnWidget
         )
     }
 
@@ -331,10 +414,15 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
                 style = draft.selectedStyle,
                 palette = draft.selectedPalette,
                 cityId = draft.selectedCityId,
-                useFahrenheit = useF
+                useFahrenheit = useF,
+                backgroundAlpha = draft.backgroundAlpha,
+                showBorder = draft.showBorder,
+                showDate = draft.showDate,
+                useEnglishDate = draft.useEnglishDate,
+                showCityOnWidget = draft.showCityOnWidget
             )
             snackbarFlow.value = if (supported) {
-                "已发起添加桌面微件请求，请在系统弹窗中点击「添加」"
+                "已发起添加 At a Glance 微件请求，请在系统弹窗中点击「添加」"
             } else {
                 "请返回手机桌面 -> 长按空白处 -> 微件 -> 选择「晴空天气」添加"
             }
@@ -355,7 +443,12 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
         styleKey: String?,
         paletteKey: String?,
         cityId: String?,
-        useFahrenheit: Boolean
+        useFahrenheit: Boolean,
+        backgroundAlpha: Float,
+        showBorder: Boolean,
+        showDate: Boolean,
+        useEnglishDate: Boolean,
+        showCityOnWidget: Boolean
     ) {
         if (appWidgetId <= 0) return
         viewModelScope.launch {
@@ -364,11 +457,16 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
                 cityId = cityId ?: studioDraftFlow.value.selectedCityId,
                 style = WidgetStyle.fromKey(styleKey),
                 palette = WidgetPalette.fromKey(paletteKey),
-                useFahrenheit = useFahrenheit
+                useFahrenheit = useFahrenheit,
+                backgroundAlpha = backgroundAlpha,
+                showBorder = showBorder,
+                showDate = showDate,
+                useEnglishDate = useEnglishDate,
+                showCityOnWidget = showCityOnWidget
             )
             WeatherWidgetUpdater.updateAllWidgets(appContext)
             refreshActiveWidgetInstances()
-            snackbarFlow.value = "桌面微件已添加并同步完成！"
+            snackbarFlow.value = "At a Glance 桌面微件已添加并同步完成！"
         }
     }
 

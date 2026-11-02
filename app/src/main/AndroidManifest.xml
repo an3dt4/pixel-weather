@@ -45,26 +45,48 @@
             </intent-filter>
         </activity>
 
-        <!-- Widget 1: Google Pill & Rounded Square Weather Widget (2x2 resizable) -->
+        <!-- Widget 0: Native Pixel At-a-Glance (一览) Date + Weather + Custom Location Widget (4x1) -->
+        <receiver
+            android:name=".widget.PixelAtAGlanceWidgetReceiver"
+            android:exported="true"
+            android:label="@string/widget_at_a_glance_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="android.intent.action.DATE_CHANGED" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/weather_at_a_glance_widget_info" />
+        </receiver>
+
+        <!-- Widget 1: Native Pixel Pill & Rounded Square Weather Widget (2x2 resizable) -->
         <receiver
             android:name=".widget.GooglePillWeatherWidgetReceiver"
             android:exported="true"
             android:label="@string/widget_pill_name">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="android.intent.action.DATE_CHANGED" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
             </intent-filter>
             <meta-data
                 android:name="android.appwidget.provider"
                 android:resource="@xml/weather_pill_widget_info" />
         </receiver>
 
-        <!-- Widget 2: Google Multi-Hour & Multi-Day Forecast Weather Widget (4x2 resizable) -->
+        <!-- Widget 2: Native Pixel Multi-Hour & Multi-Day Forecast Weather Widget (4x2 resizable) -->
         <receiver
             android:name=".widget.GoogleForecastWeatherWidgetReceiver"
             android:exported="true"
             android:label="@string/widget_forecast_name">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="android.intent.action.DATE_CHANGED" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
             </intent-filter>
             <meta-data
                 android:name="android.appwidget.provider"

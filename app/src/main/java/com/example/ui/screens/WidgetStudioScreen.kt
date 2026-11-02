@@ -6,8 +6,6 @@ import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,14 +16,12 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.AddToHomeScreen
@@ -35,17 +31,17 @@ import androidx.compose.material.icons.filled.EditLocationAlt
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.NearMe
 import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.filled.UnfoldMore
+import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -54,7 +50,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
@@ -73,7 +68,8 @@ import com.example.ui.WeatherUiState
 import com.example.ui.components.CitySearchBarInput
 import com.example.ui.components.MatchingLocationResultCard
 import com.example.ui.components.PixelWallpaperWidgetStage
-import com.example.ui.components.resolveComposeWidgetColors
+import com.example.ui.components.WidgetOpacityAndDateCard
+import com.example.ui.components.WidgetStyleAndPaletteCard
 import com.example.ui.theme.OutfitFontFamily
 import com.example.widget.WidgetConfigureActivity
 
@@ -83,6 +79,13 @@ fun WidgetStudioScreen(
     uiState: WeatherUiState,
     onSelectStyle: (WidgetStyle) -> Unit,
     onSelectPalette: (WidgetPalette) -> Unit,
+    onChangeOpacity: (Float) -> Unit,
+    onSelectOpacityPreset: (Float, Boolean) -> Unit,
+    onToggleShowBorder: (Boolean) -> Unit,
+    onToggleShowDate: (Boolean) -> Unit,
+    onToggleEnglishDate: (Boolean) -> Unit,
+    onToggleShowCityOnWidget: (Boolean) -> Unit,
+    onSyncToActiveWidgets: () -> Unit,
     onSelectStudioCity: (String) -> Unit,
     onSearchQueryChange: (String) -> Unit,
     onClearSearch: () -> Unit,
@@ -126,7 +129,6 @@ fun WidgetStudioScreen(
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 32.dp),
             verticalArrangement = Arrangement.spacedBy(18.dp)
         ) {
-            // Header
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(
@@ -142,7 +144,7 @@ fun WidgetStudioScreen(
                 }
             }
 
-            // Live Pixel Wallpaper Widget Preview Stage
+            // Interactive "Select a widget style" Sky-Wave Stage (Semi-transparent / Transparent / Solid)
             item {
                 PixelWallpaperWidgetStage(
                     cityName = previewCity?.name ?: "北京",
@@ -150,13 +152,19 @@ fun WidgetStudioScreen(
                     weather = previewCity?.weather,
                     style = draft.selectedStyle,
                     palette = draft.selectedPalette,
+                    backgroundAlpha = draft.backgroundAlpha,
+                    showBorder = draft.showBorder,
+                    showDate = draft.showDate,
+                    useEnglishDate = draft.useEnglishDate,
+                    showCityOnWidget = draft.showCityOnWidget,
                     useFahrenheit = uiState.useFahrenheit,
                     expandedTallForecast = draft.previewTallForecast,
+                    onSelectPresetOpacityAndBorder = onSelectOpacityPreset,
                     onCityPillClick = { focusInlineSearch = true }
                 )
             }
 
-            // Primary Pin to Home Screen Action Button + Pin App Icon Button
+            // Primary Pin to Home + Sync Existing Widgets + Pin App Shortcut
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Button(
@@ -178,6 +186,30 @@ fun WidgetStudioScreen(
                             fontWeight = FontWeight.Bold
                         )
                     }
+
+                    if (uiState.activeWidgets.isNotEmpty()) {
+                        FilledTonalButton(
+                            onClick = onSyncToActiveWidgets,
+                            shape = RoundedCornerShape(22.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = 50.dp)
+                                .testTag("sync_all_active_widgets_button")
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Sync,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "将当前样式与透明度同步到桌面已有的 ${uiState.activeWidgets.size} 个微件",
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+
                     OutlinedButton(
                         onClick = onPinAppIconToHome,
                         shape = RoundedCornerShape(22.dp),
@@ -198,16 +230,27 @@ fun WidgetStudioScreen(
                             fontWeight = FontWeight.SemiBold
                         )
                     }
-                    Text(
-                        text = "提示：点击桌面微件上的城市胶囊可随时搜索换城；在桌面底部上滑打开应用抽屉也能随时找到「晴空天气」。",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(horizontal = 6.dp)
-                    )
                 }
             }
 
-            // 1. Inline Widget City Search & Stored Quick-Access Locations (Core Feature!)
+            // 1. Opacity Slider, Outline Border, & Date Controls
+            item {
+                WidgetOpacityAndDateCard(
+                    backgroundAlpha = draft.backgroundAlpha,
+                    showBorder = draft.showBorder,
+                    showDate = draft.showDate,
+                    useEnglishDate = draft.useEnglishDate,
+                    showCityOnWidget = draft.showCityOnWidget,
+                    onChangeOpacity = onChangeOpacity,
+                    onSelectPreset = onSelectOpacityPreset,
+                    onToggleShowBorder = onToggleShowBorder,
+                    onToggleShowDate = onToggleShowDate,
+                    onToggleEnglishDate = onToggleEnglishDate,
+                    onToggleShowCityOnWidget = onToggleShowCityOnWidget
+                )
+            }
+
+            // 2. Custom Location Picker (Search + Saved Quick-Access Cities + Optional GPS)
             item {
                 Card(
                     shape = RoundedCornerShape(26.dp),
@@ -226,7 +269,6 @@ fun WidgetStudioScreen(
                             fontWeight = FontWeight.Bold
                         )
 
-                        // Inline City Search Box directly inside Widget Studio
                         CitySearchBarInput(
                             query = searchState.query,
                             isSearching = searchState.isSearching,
@@ -247,7 +289,6 @@ fun WidgetStudioScreen(
                             )
                         }
 
-                        // Matching Locations Dropdown List
                         if (searchState.results.isNotEmpty()) {
                             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                 Text(
@@ -269,7 +310,6 @@ fun WidgetStudioScreen(
                             }
                         }
 
-                        // Stored Quick-Access Locations Section
                         Text(
                             text = stringResource(R.string.cities_saved_title),
                             style = MaterialTheme.typography.labelLarge,
@@ -285,17 +325,9 @@ fun WidgetStudioScreen(
                             FilterChip(
                                 selected = followSelected,
                                 onClick = { onSelectStudioCity(WeatherRepository.FOLLOW_PRIMARY_CITY_ID) },
-                                label = {
-                                    Text("跟随主城市 (${uiState.primaryCity?.name ?: "北京"})")
-                                },
+                                label = { Text("跟随主城市 (${uiState.primaryCity?.name ?: "北京"})") },
                                 leadingIcon = if (followSelected) {
-                                    {
-                                        Icon(
-                                            Icons.Filled.Check,
-                                            contentDescription = null,
-                                            modifier = Modifier.size(16.dp)
-                                        )
-                                    }
+                                    { Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
                                 } else null,
                                 modifier = Modifier.heightIn(min = 48.dp)
                             )
@@ -320,7 +352,7 @@ fun WidgetStudioScreen(
                                             city.weather?.let { w ->
                                                 Spacer(modifier = Modifier.width(5.dp))
                                                 Text(
-                                                    text = WeatherFormatter.formatTemp(
+                                                    text = WeatherFormatter.formatTempWithUnit(
                                                         w.temperatureC,
                                                         uiState.useFahrenheit
                                                     ),
@@ -361,7 +393,6 @@ fun WidgetStudioScreen(
                             }
                         }
 
-                        // Popular quick chips if user hasn't typed a search query
                         if (searchState.query.isBlank()) {
                             Text(
                                 text = stringResource(R.string.cities_popular_title),
@@ -404,176 +435,16 @@ fun WidgetStudioScreen(
                 }
             }
 
-            // 2. Style Picker (Google 3 Signature Styles)
+            // 3. Layout Size & Palette Card
             item {
-                Card(
-                    shape = RoundedCornerShape(26.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.50f)
-                    ),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(
-                        modifier = Modifier.padding(18.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Text(
-                            text = stringResource(R.string.widget_style_section),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            WidgetStyle.entries.forEach { style ->
-                                val selected = draft.selectedStyle == style
-                                Surface(
-                                    onClick = { onSelectStyle(style) },
-                                    shape = RoundedCornerShape(18.dp),
-                                    color = if (selected) {
-                                        MaterialTheme.colorScheme.primary
-                                    } else {
-                                        MaterialTheme.colorScheme.surface
-                                    },
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .heightIn(min = 52.dp)
-                                        .testTag("style_option_${style.key.lowercase()}")
-                                ) {
-                                    Box(
-                                        contentAlignment = Alignment.Center,
-                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 12.dp)
-                                    ) {
-                                        Text(
-                                            text = style.label,
-                                            style = MaterialTheme.typography.labelLarge,
-                                            color = if (selected) {
-                                                MaterialTheme.colorScheme.onPrimary
-                                            } else {
-                                                MaterialTheme.colorScheme.onSurface
-                                            },
-                                            fontWeight = FontWeight.Bold
-                                        )
-                                    }
-                                }
-                            }
-                        }
-
-                        if (draft.selectedStyle == WidgetStyle.FORECAST_CARD) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(RoundedCornerShape(16.dp))
-                                    .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.7f))
-                                    .padding(horizontal = 14.dp, vertical = 8.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Filled.UnfoldMore,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = "预览高尺寸展开态 (4×3 多日预报)",
-                                        style = MaterialTheme.typography.labelLarge
-                                    )
-                                    Text(
-                                        text = "在桌面拉高微件尺寸时将自动展开未来多日趋势",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                                Switch(
-                                    checked = draft.previewTallForecast,
-                                    onCheckedChange = { onToggleTallPreview() }
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-
-            // 3. Material You Palette Picker
-            item {
-                Card(
-                    shape = RoundedCornerShape(26.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.50f)
-                    ),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(
-                        modifier = Modifier.padding(18.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Text(
-                            text = stringResource(R.string.widget_palette_section),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
-                            WidgetPalette.entries.forEach { palette ->
-                                val selected = draft.selectedPalette == palette
-                                val swatchColors = resolveComposeWidgetColors(palette)
-                                Surface(
-                                    onClick = { onSelectPalette(palette) },
-                                    shape = RoundedCornerShape(18.dp),
-                                    color = MaterialTheme.colorScheme.surface,
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .border(
-                                            width = if (selected) 2.5.dp else 1.dp,
-                                            color = if (selected) {
-                                                MaterialTheme.colorScheme.primary
-                                            } else {
-                                                MaterialTheme.colorScheme.outlineVariant
-                                            },
-                                            shape = RoundedCornerShape(18.dp)
-                                        )
-                                        .testTag("palette_option_${palette.key.lowercase()}")
-                                ) {
-                                    Column(
-                                        horizontalAlignment = Alignment.CenterHorizontally,
-                                        modifier = Modifier.padding(vertical = 12.dp, horizontal = 6.dp)
-                                    ) {
-                                        Box(
-                                            modifier = Modifier
-                                                .size(28.dp)
-                                                .clip(CircleShape)
-                                                .background(swatchColors.bg)
-                                                .border(1.dp, swatchColors.accent.copy(alpha = 0.4f), CircleShape),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            if (selected) {
-                                                Icon(
-                                                    imageVector = Icons.Filled.Check,
-                                                    contentDescription = null,
-                                                    tint = swatchColors.textPrimary,
-                                                    modifier = Modifier.size(16.dp)
-                                                )
-                                            }
-                                        }
-                                        Spacer(modifier = Modifier.height(6.dp))
-                                        Text(
-                                            text = palette.label,
-                                            style = MaterialTheme.typography.labelMedium,
-                                            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
+                WidgetStyleAndPaletteCard(
+                    selectedStyle = draft.selectedStyle,
+                    selectedPalette = draft.selectedPalette,
+                    previewTallForecast = draft.previewTallForecast,
+                    onSelectStyle = onSelectStyle,
+                    onSelectPalette = onSelectPalette,
+                    onToggleTallPreview = onToggleTallPreview
+                )
             }
 
             // 4. Active Placed Home Screen Widgets List
@@ -584,7 +455,7 @@ fun WidgetStudioScreen(
                         onReconfigureInstance = { widgetId ->
                             val intent = Intent(context, WidgetConfigureActivity::class.java).apply {
                                 putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId)
-                                putExtra(WidgetConfigureActivity.EXTRA_FOCUS_SEARCH, true)
+                                putExtra(WidgetConfigureActivity.EXTRA_FOCUS_SEARCH, false)
                             }
                             context.startActivity(intent)
                         }
@@ -631,14 +502,17 @@ private fun ActivePlacedWidgetsSection(
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = "${instance.resolvedCityName} · ${instance.style.label}",
+                                text = "${instance.resolvedCityName} · ${instance.style.shortTag}",
                                 style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.Bold
                             )
                             Text(
-                                text = "编号 #${instance.appWidgetId} · ${instance.palette.label} · ${
-                                    if (instance.isGpsCity) "实时定位" else "已存城市"
-                                }",
+                                text = "#${instance.appWidgetId} · ${
+                                    WeatherFormatter.formatOpacityShortTag(
+                                        instance.backgroundAlpha,
+                                        instance.showBorder
+                                    )
+                                } · ${instance.palette.label}",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )

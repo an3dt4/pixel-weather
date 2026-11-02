@@ -11,8 +11,6 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,7 +22,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
@@ -33,7 +30,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
@@ -56,19 +52,18 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
@@ -86,7 +81,8 @@ import com.example.data.repository.WeatherRepository
 import com.example.ui.components.CitySearchBarInput
 import com.example.ui.components.MatchingLocationResultCard
 import com.example.ui.components.PixelWallpaperWidgetStage
-import com.example.ui.components.resolveComposeWidgetColors
+import com.example.ui.components.WidgetOpacityAndDateCard
+import com.example.ui.components.WidgetStyleAndPaletteCard
 import com.example.ui.theme.OutfitFontFamily
 import com.example.ui.theme.SkyPillWeatherTheme
 import kotlinx.coroutines.delay
@@ -116,11 +112,7 @@ class WidgetConfigureActivity : ComponentActivity() {
         }
 
         val repository = WeatherRepository.getInstance(applicationContext)
-        val defaultStyle = if (WeatherWidgetUpdater.isForecastWidgetId(this, appWidgetId)) {
-            WidgetStyle.FORECAST_CARD
-        } else {
-            WidgetStyle.DIAGONAL_PILL
-        }
+        val defaultStyle = WeatherWidgetUpdater.defaultStyleForWidgetId(this, appWidgetId)
 
         setContent {
             SkyPillWeatherTheme {
@@ -167,7 +159,12 @@ private fun WidgetConfigureScreen(
 
     var selectedCityId by remember { mutableStateOf(WeatherRepository.FOLLOW_PRIMARY_CITY_ID) }
     var selectedStyle by remember { mutableStateOf(defaultStyle) }
-    var selectedPalette by remember { mutableStateOf(WidgetPalette.DYNAMIC_SKY) }
+    var selectedPalette by remember { mutableStateOf(WidgetPalette.LIGHT_PILL) }
+    var backgroundAlpha by remember { mutableFloatStateOf(0.68f) }
+    var showBorder by remember { mutableStateOf(false) }
+    var showDate by remember { mutableStateOf(true) }
+    var useEnglishDate by remember { mutableStateOf(false) }
+    var showCityOnWidget by remember { mutableStateOf(true) }
     var useFahrenheit by remember { mutableStateOf(false) }
     var isSaving by remember { mutableStateOf(false) }
 
@@ -179,13 +176,32 @@ private fun WidgetConfigureScreen(
     LaunchedEffect(appWidgetId) {
         repository.ensureSeededAndFresh()
         val existing = repository.getWidgetConfigOnce(appWidgetId)
-        if (existing != null) {
-            selectedCityId = existing.cityId
-            selectedStyle = WidgetStyle.fromKey(existing.widgetStyle)
-            selectedPalette = WidgetPalette.fromKey(existing.colorPalette)
-            useFahrenheit = existing.useFahrenheit
-        } else {
-            useFahrenheit = globalFahrenheit
+        val template = repository.getWidgetConfigOnce(WeatherRepository.STUDIO_TEMPLATE_WIDGET_ID)
+        when {
+            existing != null -> {
+                selectedCityId = existing.cityId
+                selectedStyle = WidgetStyle.fromKey(existing.widgetStyle)
+                selectedPalette = WidgetPalette.fromKey(existing.colorPalette)
+                backgroundAlpha = existing.backgroundAlpha
+                showBorder = existing.showBorder
+                showDate = existing.showDate
+                useEnglishDate = existing.useEnglishDate
+                showCityOnWidget = existing.showCityOnWidget
+                useFahrenheit = existing.useFahrenheit
+            }
+            template != null -> {
+                selectedCityId = template.cityId
+                selectedPalette = WidgetPalette.fromKey(template.colorPalette)
+                backgroundAlpha = template.backgroundAlpha
+                showBorder = template.showBorder
+                showDate = template.showDate
+                useEnglishDate = template.useEnglishDate
+                showCityOnWidget = template.showCityOnWidget
+                useFahrenheit = globalFahrenheit
+            }
+            else -> {
+                useFahrenheit = globalFahrenheit
+            }
         }
     }
 
@@ -292,7 +308,12 @@ private fun WidgetConfigureScreen(
                                     cityId = selectedCityId,
                                     style = selectedStyle,
                                     palette = selectedPalette,
-                                    useFahrenheit = useFahrenheit
+                                    useFahrenheit = useFahrenheit,
+                                    backgroundAlpha = backgroundAlpha,
+                                    showBorder = showBorder,
+                                    showDate = showDate,
+                                    useEnglishDate = useEnglishDate,
+                                    showCityOnWidget = showCityOnWidget
                                 )
                                 WeatherWidgetUpdater.updateAllWidgets(context)
                                 onSaveComplete()
@@ -338,7 +359,7 @@ private fun WidgetConfigureScreen(
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Live Preview of Selected City's Weather on the Widget
+                // Interactive "Select a widget style" Sky-Wave Stage
                 item {
                     PixelWallpaperWidgetStage(
                         cityName = previewCity?.name ?: "北京",
@@ -346,11 +367,43 @@ private fun WidgetConfigureScreen(
                         weather = previewCity?.weather,
                         style = selectedStyle,
                         palette = selectedPalette,
-                        useFahrenheit = useFahrenheit
+                        backgroundAlpha = backgroundAlpha,
+                        showBorder = showBorder,
+                        showDate = showDate,
+                        useEnglishDate = useEnglishDate,
+                        showCityOnWidget = showCityOnWidget,
+                        useFahrenheit = useFahrenheit,
+                        onSelectPresetOpacityAndBorder = { alpha, border ->
+                            backgroundAlpha = alpha
+                            showBorder = border
+                        }
                     )
                 }
 
-                // 1. City Search & Quick-Access Stored Locations Card
+                // 1. Opacity, Border, & Date Format Card
+                item {
+                    WidgetOpacityAndDateCard(
+                        backgroundAlpha = backgroundAlpha,
+                        showBorder = showBorder,
+                        showDate = showDate,
+                        useEnglishDate = useEnglishDate,
+                        showCityOnWidget = showCityOnWidget,
+                        onChangeOpacity = { alpha ->
+                            backgroundAlpha = alpha
+                            if (alpha >= 0.99f) showBorder = false
+                        },
+                        onSelectPreset = { alpha, border ->
+                            backgroundAlpha = alpha
+                            showBorder = border
+                        },
+                        onToggleShowBorder = { showBorder = it },
+                        onToggleShowDate = { showDate = it },
+                        onToggleEnglishDate = { useEnglishDate = it },
+                        onToggleShowCityOnWidget = { showCityOnWidget = it }
+                    )
+                }
+
+                // 2. Custom Location Picker Card
                 item {
                     Card(
                         shape = RoundedCornerShape(26.dp),
@@ -364,7 +417,7 @@ private fun WidgetConfigureScreen(
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             Text(
-                                text = "1. 搜索城市或从常用地点快速选择",
+                                text = stringResource(R.string.widget_location_section),
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold
                             )
@@ -458,7 +511,7 @@ private fun WidgetConfigureScreen(
                                                 city.weather?.let { w ->
                                                     Spacer(modifier = Modifier.width(4.dp))
                                                     Text(
-                                                        text = WeatherFormatter.formatTemp(
+                                                        text = WeatherFormatter.formatTempWithUnit(
                                                             w.temperatureC,
                                                             useFahrenheit
                                                         ),
@@ -552,122 +605,21 @@ private fun WidgetConfigureScreen(
                     }
                 }
 
-                // 2. Style & Palette Card
+                // 3. Layout Size & Palette Card
                 item {
-                    Card(
-                        shape = RoundedCornerShape(26.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.50f)
-                        ),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(18.dp),
-                            verticalArrangement = Arrangement.spacedBy(14.dp)
-                        ) {
-                            Text(
-                                text = "2. 选择微件版式与配色",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
-                            )
-
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                WidgetStyle.entries.forEach { style ->
-                                    val selected = selectedStyle == style
-                                    Surface(
-                                        onClick = { selectedStyle = style },
-                                        shape = RoundedCornerShape(16.dp),
-                                        color = if (selected) {
-                                            MaterialTheme.colorScheme.primary
-                                        } else {
-                                            MaterialTheme.colorScheme.surface
-                                        },
-                                        modifier = Modifier
-                                            .weight(1f)
-                                            .heightIn(min = 48.dp)
-                                    ) {
-                                        Box(
-                                            contentAlignment = Alignment.Center,
-                                            modifier = Modifier.padding(vertical = 10.dp, horizontal = 6.dp)
-                                        ) {
-                                            Text(
-                                                text = style.label,
-                                                style = MaterialTheme.typography.labelLarge,
-                                                color = if (selected) {
-                                                    MaterialTheme.colorScheme.onPrimary
-                                                } else {
-                                                    MaterialTheme.colorScheme.onSurface
-                                                },
-                                                fontWeight = FontWeight.Bold
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                WidgetPalette.entries.forEach { palette ->
-                                    val selected = selectedPalette == palette
-                                    val swatch = resolveComposeWidgetColors(palette)
-                                    Surface(
-                                        onClick = { selectedPalette = palette },
-                                        shape = RoundedCornerShape(16.dp),
-                                        color = MaterialTheme.colorScheme.surface,
-                                        modifier = Modifier
-                                            .weight(1f)
-                                            .border(
-                                                width = if (selected) 2.5.dp else 1.dp,
-                                                color = if (selected) {
-                                                    MaterialTheme.colorScheme.primary
-                                                } else {
-                                                    MaterialTheme.colorScheme.outlineVariant
-                                                },
-                                                shape = RoundedCornerShape(16.dp)
-                                            )
-                                    ) {
-                                        Column(
-                                            horizontalAlignment = Alignment.CenterHorizontally,
-                                            modifier = Modifier.padding(vertical = 10.dp, horizontal = 4.dp)
-                                        ) {
-                                            Box(
-                                                modifier = Modifier
-                                                    .size(24.dp)
-                                                    .clip(CircleShape)
-                                                    .background(swatch.bg)
-                                            )
-                                            Spacer(modifier = Modifier.height(4.dp))
-                                            Text(
-                                                text = palette.label,
-                                                style = MaterialTheme.typography.labelSmall,
-                                                fontWeight = FontWeight.SemiBold
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = "使用华氏度 (°F)",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    modifier = Modifier.weight(1f)
-                                )
-                                Switch(
-                                    checked = useFahrenheit,
-                                    onCheckedChange = { useFahrenheit = it }
-                                )
-                            }
-                        }
-                    }
+                    WidgetStyleAndPaletteCard(
+                        selectedStyle = selectedStyle,
+                        selectedPalette = selectedPalette,
+                        showFahrenheitToggle = true,
+                        useFahrenheit = useFahrenheit,
+                        onSelectStyle = { style ->
+                            selectedStyle = style
+                        },
+                        onSelectPalette = { palette ->
+                            selectedPalette = palette
+                        },
+                        onToggleFahrenheit = { useFahrenheit = it }
+                    )
                 }
             }
         }

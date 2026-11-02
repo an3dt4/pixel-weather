@@ -35,26 +35,32 @@
     <string name="metric_visibility_title">能见度</string>
     <string name="metric_sun_title">日出与日落</string>
 
-    <!-- Widget Studio & Configuration -->
-    <string name="widget_studio_title">Material You 桌面天气微件</string>
-    <string name="widget_studio_subtitle">输入城市名称即可搜索并绑定全球任意地点，自动保存至常用城市列表以便快速切换。</string>
-    <string name="widget_style_section">微件版式（三款经典样式）</string>
-    <string name="widget_style_pill">斜向胶囊 (2×2)</string>
-    <string name="widget_style_square">圆角方卡 (2×2)</string>
-    <string name="widget_style_forecast">多时预报 (4×2)</string>
-    <string name="widget_palette_section">Material You 配色方案</string>
-    <string name="palette_dynamic_sky">莫奈晴空</string>
-    <string name="palette_daylight_blue">晨曦浅蓝</string>
-    <string name="palette_midnight_indigo">深邃夜幕</string>
+    <!-- Widget Studio & At a Glance Configuration -->
+    <string name="widget_studio_title">选择微件样式 · At a Glance</string>
+    <string name="widget_studio_subtitle">1:1 复刻原生 At a Glance 胶囊微件（半透明 / 透明描边 / 纯色实心 + 0%~100% 自由透明度），自带日期星期与自定义全球任意城市位置。</string>
+    <string name="widget_style_section">微件版式尺寸</string>
+    <string name="widget_style_at_a_glance">At a Glance 胶囊 (4×1)</string>
+    <string name="widget_style_forecast">At a Glance 预报 (4×2)</string>
+    <string name="widget_style_minimal">无框极简一览 (4×1)</string>
+    <string name="widget_style_square">紧凑方卡 (2×2)</string>
+    <string name="widget_palette_section">底色与文字配色</string>
+    <string name="palette_light_pill">浅色冰晶</string>
+    <string name="palette_dark_pill">深色夜幕</string>
+    <string name="palette_dynamic_sky">莫奈天青</string>
     <string name="palette_warm_sun">暖阳奶咖</string>
-    <string name="widget_location_section">搜索与切换微件城市</string>
+    <string name="widget_opacity_section">透明度、描边与日期显示</string>
+    <string name="widget_show_border_label">透明时保留胶囊描边外框 (Transparent 经典样式)</string>
+    <string name="widget_show_date_label">显示日期与星期</string>
+    <string name="widget_english_date_label">使用英文日期格式 (如 Monday, Nov 2)</string>
+    <string name="widget_show_city_label">在微件日期旁显示自定义城市名称</string>
+    <string name="widget_location_section">自定义微件位置（补齐原生缺失的自选城市能力）</string>
     <string name="widget_follow_primary">跟随当前主城市</string>
-    <string name="widget_pin_to_home">一键添加微件到主屏幕</string>
+    <string name="widget_pin_to_home">一键添加 At a Glance 微件到桌面</string>
     <string name="widget_active_instances_title">桌面已放置的微件</string>
-    <string name="widget_reconfigure_btn">搜索/换城</string>
+    <string name="widget_reconfigure_btn">样式/位置</string>
     <string name="widget_save_apply">保存并应用到桌面微件</string>
     <string name="widget_cancel">取消</string>
-    <string name="widget_configure_header">选择微件城市与样式</string>
+    <string name="widget_configure_header">选择微件样式与自定义位置</string>
 
     <!-- Cities & Search -->
     <string name="cities_title">城市搜索与常用地点</string>
@@ -74,10 +80,12 @@
     <string name="cities_pin_favorite_cd">置顶常用城市</string>
 
     <!-- AppWidget Picker Metadata -->
-    <string name="widget_pill_name">晴空 · 胶囊与方卡天气</string>
-    <string name="widget_pill_desc">Material You 斜向胶囊与圆角方卡天气微件，支持搜索并保存全球任意城市</string>
-    <string name="widget_forecast_name">晴空 · 多时天气预报</string>
-    <string name="widget_forecast_desc">Material You 逐时与多日天气预报微件，点击城市即可搜索或快速切换已存地点</string>
+    <string name="widget_at_a_glance_name">晴空 · At a Glance 日期天气 (4×1)</string>
+    <string name="widget_at_a_glance_desc">复刻原生 At a Glance 胶囊微件：带日期、天气角标、半透明/透明/实心可调透明度与自定义城市</string>
+    <string name="widget_pill_name">晴空 · At a Glance 方卡天气 (2×2)</string>
+    <string name="widget_pill_desc">紧凑型 At a Glance 天气微件，带日期、天气角标、透明度调节与自定义任意城市</string>
+    <string name="widget_forecast_name">晴空 · At a Glance 逐时预报 (4×2)</string>
+    <string name="widget_forecast_desc">展开型 At a Glance 逐时与多日预报微件，支持透明度调节、日期显示与自定义城市位置</string>
 
     <!-- App Launcher Shortcuts & Home Screen Icon Pinning -->
     <string name="pin_app_icon_to_home">将「晴空天气」图标固定到主屏幕</string>

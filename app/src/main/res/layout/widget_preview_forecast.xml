@@ -21,16 +21,16 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="上海 · 自选"
-                android:textColor="#1A365D"
-                android:textSize="13sp"
+                android:text="上海 · 11月2日 周一"
+                android:textColor="#2B486B"
+                android:textSize="12sp"
                 android:textStyle="bold" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="24°"
-                android:textColor="#0D223A"
+                android:textColor="#0B1F38"
                 android:textSize="36sp"
                 android:textStyle="bold" />
         </LinearLayout>
@@ -42,16 +42,16 @@
             android:orientation="vertical">
 
             <ImageView
-                android:layout_width="36dp"
-                android:layout_height="36dp"
+                android:layout_width="34dp"
+                android:layout_height="34dp"
                 android:contentDescription="@null"
                 android:src="@drawable/ic_weather_partly_cloudy_day" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="晴间多云 · 27°/18°"
-                android:textColor="#2C4A70"
+                android:text="晴间多云 · 27° / 18°"
+                android:textColor="#2B486B"
                 android:textSize="12sp" />
         </LinearLayout>
     </LinearLayout>

@@ -10,6 +10,8 @@ import androidx.room.PrimaryKey
 import androidx.room.Query
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import kotlinx.coroutines.flow.Flow
 
 @Entity(tableName = "saved_cities")
@@ -34,7 +36,12 @@ data class WidgetConfigEntity(
     val cityId: String,
     val widgetStyle: String,
     val colorPalette: String,
-    val useFahrenheit: Boolean = false
+    val useFahrenheit: Boolean = false,
+    val backgroundAlpha: Float = 0.68f,
+    val showBorder: Boolean = false,
+    val showDate: Boolean = true,
+    val useEnglishDate: Boolean = false,
+    val showCityOnWidget: Boolean = true
 )
 
 @Dao
@@ -103,13 +110,24 @@ interface WeatherDao {
 
 @Database(
     entities = [SavedCityEntity::class, WidgetConfigEntity::class],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 abstract class WeatherDatabase : RoomDatabase() {
     abstract fun weatherDao(): WeatherDao
 
     companion object {
+        val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE widget_configs ADD COLUMN backgroundAlpha REAL NOT NULL DEFAULT 0.68")
+                db.execSQL("ALTER TABLE widget_configs ADD COLUMN showBorder INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE widget_configs ADD COLUMN showDate INTEGER NOT NULL DEFAULT 1")
+                db.execSQL("ALTER TABLE widget_configs ADD COLUMN useEnglishDate INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE widget_configs ADD COLUMN showCityOnWidget INTEGER NOT NULL DEFAULT 1")
+                db.execSQL("UPDATE widget_configs SET widgetStyle = 'PIXEL_AT_A_GLANCE', colorPalette = 'LIGHT_PILL' WHERE widgetStyle = 'DIAGONAL_PILL'")
+            }
+        }
+
         @Volatile
         private var INSTANCE: WeatherDatabase? = null
 
@@ -119,7 +137,8 @@ abstract class WeatherDatabase : RoomDatabase() {
                     context.applicationContext,
                     WeatherDatabase::class.java,
                     "skypill_weather.db"
-                ).fallbackToDestructiveMigration(true)
+                ).addMigrations(MIGRATION_2_3)
+                    .fallbackToDestructiveMigration(true)
                     .build()
                     .also { INSTANCE = it }
             }

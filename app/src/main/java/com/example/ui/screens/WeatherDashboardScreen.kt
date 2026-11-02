@@ -543,16 +543,16 @@ private fun WidgetQuickShowcaseCard(
             Spacer(modifier = Modifier.width(14.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "Material You 桌面天气微件",
+                    text = "At a Glance 原生桌面微件（带日期与透明度）",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onPrimaryContainer
                 )
                 val tempHint = snapshot?.let {
-                    WeatherFormatter.formatTemp(it.temperatureC, useFahrenheit)
-                } ?: "--°"
+                    WeatherFormatter.formatTempWithUnit(it.temperatureC, useFahrenheit)
+                } ?: "--°C"
                 Text(
-                    text = "当前城市：$cityName ($tempHint · ${if (isGps) "实时定位" else "自选已存"}) · 点击定制微件并绑定城市",
+                    text = "当前位置：$cityName ($tempHint · ${if (isGps) "实时定位" else "自选城市"}) · 支持半透明 / 透明描边 / 实心与 0%~100% 透明度",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.82f)
                 )

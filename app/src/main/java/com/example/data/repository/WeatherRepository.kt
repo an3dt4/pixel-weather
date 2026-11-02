@@ -10,6 +10,7 @@ import com.example.data.local.WidgetConfigEntity
 import com.example.data.location.OptionalLocationHelper
 import com.example.data.model.CitySearchResult
 import com.example.data.model.SavedCityUiModel
+import com.example.data.model.WeatherFormatter
 import com.example.data.model.WeatherSnapshot
 import com.example.data.model.WidgetPalette
 import com.example.data.model.WidgetStyle
@@ -31,6 +32,13 @@ data class ResolvedWidgetPayload(
     val isGpsLocation: Boolean,
     val style: WidgetStyle,
     val palette: WidgetPalette,
+    val backgroundAlpha: Float,
+    val showBorder: Boolean,
+    val showDate: Boolean,
+    val useEnglishDate: Boolean,
+    val showCityOnWidget: Boolean,
+    val dateLongText: String,
+    val dateShortText: String,
     val useFahrenheit: Boolean,
     val weather: WeatherSnapshot?
 )
@@ -117,10 +125,6 @@ class WeatherRepository private constructor(private val appContext: Context) {
         }
     }
 
-    /**
-     * Searches global locations via Open-Meteo Geocoding API with script-aware language matching,
-     * Chinese city suffix normalization, and instant local matching against popular & saved cities.
-     */
     suspend fun searchGlobalCities(rawQuery: String): Result<List<CitySearchResult>> =
         withContext(Dispatchers.IO) {
             runCatching {
@@ -134,8 +138,6 @@ class WeatherRepository private constructor(private val appContext: Context) {
                         preset.country.contains(trimmed, ignoreCase = true)
                 }
 
-                // Single-char Latin queries can't hit Open-Meteo prefix search meaningfully,
-                // while single/two-char CJK or 2+ char Latin queries hit Open-Meteo directly.
                 val remoteResults = coroutineScope {
                     val primaryDeferred = async {
                         runCatching {
@@ -149,8 +151,6 @@ class WeatherRepository private constructor(private val appContext: Context) {
                         }.getOrNull()
                     }
 
-                    // For 2-character Chinese city names (e.g., "杭州") or names ending in "市"/"区",
-                    // Open-Meteo performs exact matching on length == 2, so also query alternate suffix form.
                     val alternateQuery: String? = when {
                         lang == "zh" && trimmed.length == 2 && !trimmed.endsWith("市") -> "${trimmed}市"
                         lang == "zh" && trimmed.length > 2 &&
@@ -185,10 +185,6 @@ class WeatherRepository private constructor(private val appContext: Context) {
             }
         }
 
-    /**
-     * Stores the user's selected location in Room for quick access, updates its recency timestamp,
-     * optionally sets it as the active weather city, and fetches fresh real-time weather.
-     */
     suspend fun addOrSelectCity(
         cityResult: CitySearchResult,
         makePrimary: Boolean = true
@@ -281,7 +277,12 @@ class WeatherRepository private constructor(private val appContext: Context) {
         cityId: String,
         style: WidgetStyle,
         palette: WidgetPalette,
-        useFahrenheit: Boolean
+        useFahrenheit: Boolean,
+        backgroundAlpha: Float = 0.68f,
+        showBorder: Boolean = false,
+        showDate: Boolean = true,
+        useEnglishDate: Boolean = false,
+        showCityOnWidget: Boolean = true
     ) = withContext(Dispatchers.IO) {
         dao.upsertWidgetConfig(
             WidgetConfigEntity(
@@ -289,7 +290,12 @@ class WeatherRepository private constructor(private val appContext: Context) {
                 cityId = cityId,
                 widgetStyle = style.key,
                 colorPalette = palette.key,
-                useFahrenheit = useFahrenheit
+                useFahrenheit = useFahrenheit,
+                backgroundAlpha = backgroundAlpha.coerceIn(0f, 1f),
+                showBorder = showBorder,
+                showDate = showDate,
+                useEnglishDate = useEnglishDate,
+                showCityOnWidget = showCityOnWidget
             )
         )
         val resolvedCityId = if (cityId == FOLLOW_PRIMARY_CITY_ID) {
@@ -315,6 +321,38 @@ class WeatherRepository private constructor(private val appContext: Context) {
         }
     }
 
+    suspend fun syncStyleAndConfigToWidgetIds(
+        widgetIds: List<Int>,
+        cityId: String,
+        style: WidgetStyle,
+        palette: WidgetPalette,
+        useFahrenheit: Boolean,
+        backgroundAlpha: Float,
+        showBorder: Boolean,
+        showDate: Boolean,
+        useEnglishDate: Boolean,
+        showCityOnWidget: Boolean
+    ) = withContext(Dispatchers.IO) {
+        for (id in widgetIds) {
+            if (id > 0) {
+                dao.upsertWidgetConfig(
+                    WidgetConfigEntity(
+                        appWidgetId = id,
+                        cityId = cityId,
+                        widgetStyle = style.key,
+                        colorPalette = palette.key,
+                        useFahrenheit = useFahrenheit,
+                        backgroundAlpha = backgroundAlpha.coerceIn(0f, 1f),
+                        showBorder = showBorder,
+                        showDate = showDate,
+                        useEnglishDate = useEnglishDate,
+                        showCityOnWidget = showCityOnWidget
+                    )
+                )
+            }
+        }
+    }
+
     suspend fun removeWidgetConfig(appWidgetId: Int) = withContext(Dispatchers.IO) {
         dao.deleteWidgetConfig(appWidgetId)
     }
@@ -329,11 +367,13 @@ class WeatherRepository private constructor(private val appContext: Context) {
         defaultStyle: WidgetStyle
     ): ResolvedWidgetPayload = withContext(Dispatchers.IO) {
         ensureSeededAndFresh()
-        val config = dao.getWidgetConfig(appWidgetId)
-            ?: dao.getWidgetConfig(STUDIO_TEMPLATE_WIDGET_ID)
+        val instanceConfig = dao.getWidgetConfig(appWidgetId)
+        val templateConfig = dao.getWidgetConfig(STUDIO_TEMPLATE_WIDGET_ID)
         val globalFahrenheit = getUseFahrenheitOnce()
 
-        val requestedCityId = config?.cityId ?: FOLLOW_PRIMARY_CITY_ID
+        val requestedCityId = instanceConfig?.cityId
+            ?: templateConfig?.cityId
+            ?: FOLLOW_PRIMARY_CITY_ID
         val allCities = dao.getAllCitiesOnce()
         val resolvedCity = when {
             requestedCityId == FOLLOW_PRIMARY_CITY_ID ->
@@ -351,12 +391,39 @@ class WeatherRepository private constructor(private val appContext: Context) {
             null
         }
 
-        val resolvedStyle = if (config != null) {
-            WidgetStyle.fromKey(config.widgetStyle)
-        } else {
-            defaultStyle
+        val resolvedStyle = when {
+            instanceConfig != null -> WidgetStyle.fromKey(instanceConfig.widgetStyle)
+            templateConfig != null && defaultStyle == WidgetStyle.PIXEL_AT_A_GLANCE ->
+                WidgetStyle.fromKey(templateConfig.widgetStyle)
+            else -> defaultStyle
         }
-        val resolvedPalette = WidgetPalette.fromKey(config?.colorPalette)
+        val templateMatchesStyle = templateConfig?.let {
+            WidgetStyle.fromKey(it.widgetStyle) == resolvedStyle
+        } ?: false
+
+        val resolvedPalette = when {
+            instanceConfig != null -> WidgetPalette.fromKey(instanceConfig.colorPalette)
+            templateMatchesStyle && templateConfig != null -> WidgetPalette.fromKey(templateConfig.colorPalette)
+            resolvedStyle == WidgetStyle.PIXEL_MINIMAL -> WidgetPalette.DARK_PILL
+            else -> WidgetPalette.LIGHT_PILL
+        }
+        val resolvedAlpha = when {
+            instanceConfig != null -> instanceConfig.backgroundAlpha
+            templateMatchesStyle && templateConfig != null -> templateConfig.backgroundAlpha
+            resolvedStyle == WidgetStyle.PIXEL_MINIMAL -> 0.0f
+            else -> 0.68f
+        }.coerceIn(0f, 1f)
+        val resolvedShowBorder = when {
+            instanceConfig != null -> instanceConfig.showBorder
+            templateMatchesStyle && templateConfig != null -> templateConfig.showBorder
+            else -> false
+        }
+        val resolvedShowDate = instanceConfig?.showDate ?: templateConfig?.showDate ?: true
+        val resolvedUseEnglishDate = instanceConfig?.useEnglishDate ?: templateConfig?.useEnglishDate ?: false
+        val resolvedShowCity = instanceConfig?.showCityOnWidget ?: templateConfig?.showCityOnWidget ?: true
+
+        val tzId = weather?.timezoneId
+        val nowMs = System.currentTimeMillis()
 
         ResolvedWidgetPayload(
             appWidgetId = appWidgetId,
@@ -365,7 +432,24 @@ class WeatherRepository private constructor(private val appContext: Context) {
             isGpsLocation = resolvedCity?.isCurrentLocation == true,
             style = resolvedStyle,
             palette = resolvedPalette,
-            useFahrenheit = config?.useFahrenheit ?: globalFahrenheit,
+            backgroundAlpha = resolvedAlpha,
+            showBorder = resolvedShowBorder,
+            showDate = resolvedShowDate,
+            useEnglishDate = resolvedUseEnglishDate,
+            showCityOnWidget = resolvedShowCity,
+            dateLongText = WeatherFormatter.formatAtAGlanceDate(
+                timezoneId = tzId,
+                useEnglish = resolvedUseEnglishDate,
+                shortForm = false,
+                nowEpochMs = nowMs
+            ),
+            dateShortText = WeatherFormatter.formatAtAGlanceDate(
+                timezoneId = tzId,
+                useEnglish = resolvedUseEnglishDate,
+                shortForm = true,
+                nowEpochMs = nowMs
+            ),
+            useFahrenheit = instanceConfig?.useFahrenheit ?: globalFahrenheit,
             weather = weather
         )
     }

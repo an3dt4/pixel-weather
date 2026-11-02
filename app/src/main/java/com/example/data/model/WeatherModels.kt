@@ -3,33 +3,43 @@ package com.example.data.model
 import androidx.annotation.DrawableRes
 import com.example.R
 import com.squareup.moshi.JsonClass
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Date
 import java.util.Locale
+import java.util.TimeZone
 import kotlin.math.roundToInt
 
-enum class WidgetStyle(val key: String, val label: String) {
-    DIAGONAL_PILL("DIAGONAL_PILL", "斜向胶囊 (2×2)"),
-    ROUNDED_SQUARE("ROUNDED_SQUARE", "圆角方卡 (2×2)"),
-    FORECAST_CARD("FORECAST_CARD", "多时预报 (4×2)");
+enum class WidgetStyle(val key: String, val label: String, val shortTag: String) {
+    PIXEL_AT_A_GLANCE("PIXEL_AT_A_GLANCE", "At a Glance 胶囊 (4×1)", "胶囊 4×1"),
+    FORECAST_CARD("FORECAST_CARD", "At a Glance 预报 (4×2)", "预报 4×2"),
+    PIXEL_MINIMAL("PIXEL_MINIMAL", "无框极简一览 (4×1)", "极简 4×1"),
+    ROUNDED_SQUARE("ROUNDED_SQUARE", "紧凑方卡 (2×2)", "方卡 2×2");
 
     companion object {
-        fun fromKey(key: String?): WidgetStyle =
-            entries.firstOrNull { it.key == key } ?: DIAGONAL_PILL
+        fun fromKey(key: String?): WidgetStyle = when (key) {
+            "DIAGONAL_PILL" -> PIXEL_AT_A_GLANCE
+            else -> entries.firstOrNull { it.key == key } ?: PIXEL_AT_A_GLANCE
+        }
     }
 }
 
 enum class WidgetPalette(
     val key: String,
     val label: String,
-    @DrawableRes val diagonalPillDrawable: Int
+    val subtitle: String
 ) {
-    DYNAMIC_SKY("DYNAMIC_SKY", "莫奈晴空", R.drawable.bg_pill_diagonal_dynamic),
-    DAYLIGHT_BLUE("DAYLIGHT_BLUE", "晨曦浅蓝", R.drawable.bg_pill_diagonal_daylight),
-    MIDNIGHT_INDIGO("MIDNIGHT_INDIGO", "深邃夜幕", R.drawable.bg_pill_diagonal_midnight),
-    WARM_SUN("WARM_SUN", "暖阳奶咖", R.drawable.bg_pill_diagonal_warm);
+    LIGHT_PILL("LIGHT_PILL", "浅色冰晶", "深色字 · 经典蓝标"),
+    DARK_PILL("DARK_PILL", "深色夜幕", "纯白字 · 适配深壁纸"),
+    DYNAMIC_SKY("DYNAMIC_SKY", "莫奈天青", "天青底 · 经典蓝标"),
+    WARM_SUN("WARM_SUN", "暖阳奶咖", "暖棕字 · 琥珀角标");
 
     companion object {
-        fun fromKey(key: String?): WidgetPalette =
-            entries.firstOrNull { it.key == key } ?: DYNAMIC_SKY
+        fun fromKey(key: String?): WidgetPalette = when (key) {
+            "DAYLIGHT_BLUE" -> LIGHT_PILL
+            "MIDNIGHT_INDIGO", "PIXEL_FROST" -> DARK_PILL
+            else -> entries.firstOrNull { it.key == key } ?: LIGHT_PILL
+        }
     }
 }
 
@@ -119,10 +129,94 @@ data class ActiveWidgetInstanceUi(
     val isGpsCity: Boolean,
     val style: WidgetStyle,
     val palette: WidgetPalette,
+    val backgroundAlpha: Float,
+    val showBorder: Boolean,
+    val showDate: Boolean,
+    val useEnglishDate: Boolean,
+    val showCityOnWidget: Boolean,
     val useFahrenheit: Boolean
 )
 
 object WeatherFormatter {
+
+    fun formatAtAGlanceDate(
+        timezoneId: String? = null,
+        useEnglish: Boolean = false,
+        shortForm: Boolean = false,
+        nowEpochMs: Long = System.currentTimeMillis()
+    ): String {
+        val tz = resolveSafeTimeZone(timezoneId)
+        val date = Date(nowEpochMs)
+        if (useEnglish) {
+            val pattern = if (shortForm) "EEE, MMM d" else "EEEE, MMM d"
+            return SimpleDateFormat(pattern, Locale.ENGLISH).apply {
+                timeZone = tz
+            }.format(date)
+        }
+        val cal = Calendar.getInstance(tz).apply { time = date }
+        val month = cal.get(Calendar.MONTH) + 1
+        val day = cal.get(Calendar.DAY_OF_MONTH)
+        val weekday = if (shortForm) {
+            when (cal.get(Calendar.DAY_OF_WEEK)) {
+                Calendar.SUNDAY -> "周日"
+                Calendar.MONDAY -> "周一"
+                Calendar.TUESDAY -> "周二"
+                Calendar.WEDNESDAY -> "周三"
+                Calendar.THURSDAY -> "周四"
+                Calendar.FRIDAY -> "周五"
+                Calendar.SATURDAY -> "周六"
+                else -> ""
+            }
+        } else {
+            when (cal.get(Calendar.DAY_OF_WEEK)) {
+                Calendar.SUNDAY -> "星期日"
+                Calendar.MONDAY -> "星期一"
+                Calendar.TUESDAY -> "星期二"
+                Calendar.WEDNESDAY -> "星期三"
+                Calendar.THURSDAY -> "星期四"
+                Calendar.FRIDAY -> "星期五"
+                Calendar.SATURDAY -> "星期六"
+                else -> ""
+            }
+        }
+        return "${month}月${day}日 $weekday".trim()
+    }
+
+    fun formatOpacityModeLabel(alpha: Float, showBorder: Boolean): String {
+        val pct = (alpha.coerceIn(0f, 1f) * 100f).roundToInt()
+        return when {
+            pct == 0 && showBorder -> "透明描边 · Transparent (0%)"
+            pct == 0 -> "全透无框 · Transparent (0%)"
+            pct == 100 -> "纯色实心 · Solid (100%)"
+            pct in 64..72 -> "半透明 · Semi-transparent ($pct%)"
+            else -> "自定义半透 ($pct%)"
+        }
+    }
+
+    fun formatOpacityShortTag(alpha: Float, showBorder: Boolean): String {
+        val pct = (alpha.coerceIn(0f, 1f) * 100f).roundToInt()
+        return when {
+            pct == 0 && showBorder -> "透明描边 0%"
+            pct == 0 -> "全透明 0%"
+            pct == 100 -> "实心 100%"
+            else -> "不透明度 $pct%"
+        }
+    }
+
+    private fun resolveSafeTimeZone(timezoneId: String?): TimeZone {
+        if (timezoneId.isNullOrBlank()) return TimeZone.getDefault()
+        val parsed = TimeZone.getTimeZone(timezoneId)
+        return if (
+            parsed.id == "GMT" &&
+            !timezoneId.equals("GMT", ignoreCase = true) &&
+            !timezoneId.equals("UTC", ignoreCase = true)
+        ) {
+            TimeZone.getDefault()
+        } else {
+            parsed
+        }
+    }
+
     fun formatTemp(tempC: Double, useFahrenheit: Boolean, includeDegree: Boolean = true): String {
         val value = if (useFahrenheit) {
             (tempC * 9.0 / 5.0 + 32.0).roundToInt()
@@ -130,6 +224,15 @@ object WeatherFormatter {
             tempC.roundToInt()
         }
         return if (includeDegree) "$value°" else "$value"
+    }
+
+    fun formatTempWithUnit(tempC: Double, useFahrenheit: Boolean): String {
+        val value = if (useFahrenheit) {
+            (tempC * 9.0 / 5.0 + 32.0).roundToInt()
+        } else {
+            tempC.roundToInt()
+        }
+        return if (useFahrenheit) "$value°F" else "$value°C"
     }
 
     fun windDirectionLabel(deg: Int): String {
